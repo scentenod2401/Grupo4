@@ -1,3 +1,0 @@
-Este es un archivo de prueba para el proyecto Grupo4.
-
-Contenido de ejemplo para testing.
