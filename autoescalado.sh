@@ -28,12 +28,14 @@ if (( $(echo "$cpu > $CPU_UP" | bc -l) )); then
             echo "[$(date)] CREANDO clon 200..."
             pct clone $BASE $CLONE1 -snapname "base-$TIMESTAMP"
             pct set $CLONE1 -hostname web-autoescalado-200
+            pct set $CLONE1 -net0 name=eth0,bridge=vmbr1,ip=192.168.14.200/24,gw=192.168.14.1
             pct start $CLONE1
             echo "[$(date)] ✓ Clon 200 creado"
         elif [ $exists_201 -eq 0 ]; then
             echo "[$(date)] CREANDO clon 201..."
             pct clone $BASE $CLONE2 -snapname "base-$TIMESTAMP"
             pct set $CLONE2 -hostname web-autoescalado-201
+            pct set $CLONE1 -net0 name=eth0,bridge=vmbr1,ip=192.168.14.201/24,gw=192.168.14.1
             pct start $CLONE2
             echo "[$(date)] ✓ Clon 201 creado"
         fi
