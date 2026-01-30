@@ -1,0 +1,297 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'grupo4_steven - VPC 10.4.0.0/16 + Bastion + Privada + NAT + S3 + SSM (AWS Academy)'
+
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Clave EC2 existente
+    ConstraintDescription: Debe ser un EC2 Key Pair existente
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "EC2 Configuration"
+        Parameters:
+          - KeyPairName
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.4.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-igw
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.4.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-public-subnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-public-rt
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  EIPNat:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-nat-eip
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EIPNat.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-nat
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.4.2.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-private-subnet
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-private-rt
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Bastion Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: All outbound
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-bastion-sg
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private Instance Security Group - SSM Only
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: All outbound
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-private-sg
+
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b6c6ebed2801a5cb
+      InstanceType: t3.nano
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      IamInstanceProfile: LabInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          apt-get update
+          apt-get upgrade -y
+          apt-get install -y curl wget git vim htop net-tools unzip
+          
+          # Instalar AWS CLI v2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          rm -rf awscliv2.zip aws/
+          
+          # Instalar SSM Agent
+          snap install amazon-ssm-agent --classic
+          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
+          systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+      Monitoring: true
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-bastion
+
+
+  PrivateInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b6c6ebed2801a5cb
+      InstanceType: t3.nano
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref PrivateSecurityGroup
+      IamInstanceProfile: LabInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          apt-get update
+          apt-get upgrade -y
+          apt-get install -y curl wget git vim htop mysql-client net-tools unzip
+          
+          # Instalar AWS CLI v2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          rm -rf awscliv2.zip aws/
+          
+          # Instalar SSM Agent
+          snap install amazon-ssm-agent --classic
+          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
+          systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+      Monitoring: true
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-privada
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "grupo4-steven-${AWS::AccountId}-${AWS::Region}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: grupo4_steven-s3
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
+
+  VpcCidr:
+    Description: VPC CIDR Block
+    Value: !GetAtt VPC.CidrBlock
+
+  PublicSubnetCidr:
+    Description: Public Subnet CIDR
+    Value: !GetAtt PublicSubnet.CidrBlock
+
+  PrivateSubnetCidr:
+    Description: Private Subnet CIDR
+    Value: !GetAtt PrivateSubnet.CidrBlock
+
+  NATGatewayEIP:
+    Description: NAT Gateway EIP
+    Value: !Ref EIPNat
+
+  BastionInstanceId:
+    Description: Bastion Instance ID
+    Value: !Ref BastionHost
+
+  BastionPublicIP:
+    Description: Bastion Public IP
+    Value: !GetAtt BastionHost.PublicIp
+
+  BastionPrivateIP:
+    Description: Bastion Private IP
+    Value: !GetAtt BastionHost.PrivateIp
+
+  PrivateInstanceId:
+    Description: Private Instance ID
+    Value: !Ref PrivateInstance
+
+  PrivateInstanceIP:
+    Description: Private Instance IP
+    Value: !GetAtt PrivateInstance.PrivateIp
+
+  S3BucketName:
+    Description: S3 Bucket Name
+    Value: !Ref S3Bucket
+
+  S3BucketUrl:
+    Description: S3 Bucket URL
+    Value: !Sub 's3://${S3Bucket}'
+
+  SSMCommandPrivate:
+    Description: SSM Command for Private Instance
+    Value: !Sub 'aws ssm start-session --target ${PrivateInstance} --region ${AWS::Region}'
+
+  SSMCommandBastion:
+    Description: SSM Command for Bastion
+    Value: !Sub 'aws ssm start-session --target ${BastionHost} --region ${AWS::Region}'
+
+  SSHCommandBastion:
+    Description: SSH Command for Bastion
+    Value: !Sub 'ssh -i <your-key.pem> ubuntu@${BastionHost.PublicIp}'
