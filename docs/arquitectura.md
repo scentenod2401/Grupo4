@@ -16,7 +16,8 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 |------------|-----------|--------|-------------|
 | **Proxmox VE** | `192.168.31.104` | `8006` | Panel de administración Proxmox |
 | **ProxMenux Monitor** | `192.168.31.104` | `8008` | Sistema de monitorización |
-| **Zabbix** | `192.168.31.224` | `Ninguno` | Sistema de monitorización (`/zabbix`) |
+| **Web** | `192.168.31.224` | `443` | Web |
+| **Zabbix** | `192.168.31.224` | `8100` | Sistema de monitorización (`/zabbix`) |
 | **HAProxy Stats** | `192.168.31.224` | `9999` | Panel de estadísticas HAProxy (`/stats`) |
 
 ### Topología de Red
@@ -45,8 +46,8 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
                               WAN:     │     LAN:
                            192.168.31.224   192.168.14.1
                               eth0     │     eth1
-                         (HAProxy:9999)│       │
-                                       │    [┌──┴──────────┐
+                                       │       │
+                                       │    ┌──┴──── ──────┐
                                        │    │ LXC 102-109  │
                                        │    │ .14.10-.17   │
                                        │    └──────────────┘
@@ -70,7 +71,7 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 |----|----------|-----|------|--------|
 | 100 | tailscale | 192.168.31.204 (bridge a host) | LXC | VPN Tailscale en contenedor |
 | 101 | mikrotik | 192.168.31.224 (eth0 WAN)<br>192.168.14.1 (eth1 LAN) | VM | Router/Gateway/Firewall |
-| 102 | web | 192.168.14.10 | LXC | Servidor Web Apache/PHP |
+| 102 | web | 192.168.14.10 | LXC | Servidor Web Wordpress/Nginx/PHP |
 | 103 | bd | 192.168.14.11 | LXC | Base de Datos MySQL/MariaDB |
 | 104 | haproxy | 192.168.14.12 | LXC | Load Balancer (backend) |
 | 105 | zabbix | 192.168.14.13 | LXC | Monitorización Zabbix |
@@ -127,6 +128,9 @@ Tailscale (100) - .31.204
 
 MikroTik WAN (192.168.31.224)
   └─→ HAProxy Stats Web: :9999/stats
+
+MikroTik WAN (192.168.31.224)
+  └─→ Monitorización Zabbix: /zabbix
 ```
 
 ---
@@ -271,7 +275,7 @@ pct start $CLONE_ID
 
 ### Backup Automático de Base de Datos a S3
 
-**Script:** `aws/scripts/dump_s3_db.sh`
+**Script:** `aws/scripts/dump_s3_db.ps1`
 
 **Proceso:**
 1. **Dump Database:** `mysqldump` extrae datos completos de MySQL/MariaDB
@@ -290,7 +294,7 @@ s3://grupo4-steven-abc123/backups/bd_dump_20260131_142530.sql.gz
 **Programación (cron):**
 ```bash
 # Backup diario a las 02:00 AM
-0 2 * * * /path/to/dump_s3_db.sh >> /var/log/backup-bd.log 2>&1
+0 2 * * * /path/to/dump_s3_db.ps1 >> /var/log/backup-bd.log 2>&1
 ```
 
 ---
@@ -350,7 +354,7 @@ Clientes → MikroTik:9999 → HAProxy (LXC 104) → Backends
 - Estado de contenedores LXC (up/down)
 - Uso de CPU, RAM, disco
 - Tráfico de red (interfaces vmbr0/vmbr1)
-- Servicios críticos (Apache, MySQL, HAProxy)
+- Servicios críticos (Nginx, MySQL, HAProxy)
 - Auto-escalado (creación/eliminación de clones)
 
 ### CloudWatch (AWS)
@@ -367,7 +371,7 @@ Clientes → MikroTik:9999 → HAProxy (LXC 104) → Backends
 | **Proxmox** | `/var/log/pve/` | Logs de virtualización |
 | **Auto-escalado** | `/var/log/autoescalado.log` | Eventos de escalado |
 | **Backup BD** | `/var/log/backup-bd.log` | Resultados de backups |
-| **Apache** | `/var/log/apache2/` | Access/error logs |
+| **Nginx** | `/var/log/nginx/` | Access/error logs |
 | **MySQL** | `/var/log/mysql/` | Query logs, errores |
 | **HAProxy** | `/var/log/haproxy.log` | Balanceo y conexiones |
 
@@ -385,11 +389,17 @@ tailscale up
 # Acceso web a Proxmox
 https://192.168.31.104:8006
 
+# Acceso web 
+https://192.168.31.224
+
 # Acceso a ProxMenux Monitor
 http://192.168.31.104:8008
 
 # Acceso a HAProxy Stats
 http://192.168.31.224:9999/stats
+
+# Acceso a ZAbbix
+http://192.168.31.224/zabbix
 
 # Acceso SSH a contenedores
 ssh root@192.168.14.10  # Web
