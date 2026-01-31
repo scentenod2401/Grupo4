@@ -1,5 +1,7 @@
 # 🏭 Arquitectura del Sistema - Grupo 4
 
+> ⚠️ **Work in Progress:** Este documento está en desarrollo activo y se actualizará conforme avance el proyecto.
+
 ## Visión General
 
 Este documento describe la arquitectura completa de la infraestructura híbrida del Grupo 4, que combina recursos locales en Proxmox con servicios en la nube de AWS.
@@ -8,54 +10,119 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 
 ## 📍 Infraestructura Local (Proxmox)
 
+### Servidor Proxmox
+
+| Componente | Dirección | Puerto | Descripción |
+|------------|-----------|--------|-------------|
+| **Proxmox VE** | `192.168.31.104` | `8006` | Panel de administración Proxmox |
+| **ProxMenux Monitor** | `192.168.31.104` | `8008` | Sistema de monitorización |
+
 ### Topología de Red
 
 ```
                      INTERNET
                         │
+                 [Router Principal]
+                   192.168.31.1
                         │
-         ┌──────────┬──────────┐
-         │            │            │
-      vmbr0 (WAN)   vmbr1 (LAN)     │
-      DHCP          192.168.14.0/24 │
-         │            │            │
-    ┌────┼────┐       │            │
-    │    │    │       │            │
-  [100] [101] │    [101]          │
- Tailsc Mikro │   MikroTik        │
-   ale  tik   │    .14.1          │
-        eth0  │    eth1           │
-              │       │            │
-              │    [┌──┴──────────┐
-              │    │ 102-109 LXC  │
-              │    │ .14.10-.17   │
-              │    └────────────┘
-              │
-         TAILSCALE VPN
+         ┌──────────────┴───────────────┐
+         │                              │
+    Red Principal              Servidor Proxmox
+    192.168.31.0/24           192.168.31.104
+         │                              │
+         │                    ┌─────────┴─────────┐
+         │                    │                   │
+         │                 vmbr0 (WAN)       vmbr1 (LAN)
+         │              192.168.31.0/24   192.168.14.0/24
+         │                    │                   │
+    ┌────┴────────┐      ┌────┼────────┐          │
+    │             │      │    │        │          │
+ [Tailscale]  [Otros]  [100] [101]    │       [101]
+ 192.168.31.204       Tailsc MikroTik │     MikroTik
+                        LXC    VM      │     Gateway
+                              WAN:     │     LAN:
+                           192.168.31.224   192.168.14.1
+                              eth0     │     eth1
+                                       │       │
+                                       │    [┌──┴──────────┐
+                                       │    │ LXC 102-109  │
+                                       │    │ .14.10-.17   │
+                                       │    └──────────────┘
+                                       │
+                                  TAILSCALE VPN
+                              (Acceso Remoto Seguro)
 ```
 
-### Contenedores LXC
+### Direccionamiento IP Detallado
 
-| ID | Hostname | IP | Red | Función |
-|----|----------|-----|-----|--------|
-| 100 | tailscale | DHCP | vmbr0 (WAN) | VPN para acceso remoto |
-| 101 | mikrotik | DHCP (eth0)<br>192.168.14.1 (eth1) | vmbr0+vmbr1 | Router/Gateway |
-| 102 | web | 192.168.14.10 | vmbr1 (LAN) | Servidor Web |
-| 103 | bd | 192.168.14.11 | vmbr1 (LAN) | Base de Datos |
-| 104 | haproxy | 192.168.14.12 | vmbr1 (LAN) | Load Balancer |
-| 105 | zabbix | 192.168.14.13 | vmbr1 (LAN) | Monitorización |
-| 106 | jitsi | 192.168.14.14 | vmbr1 (LAN) | Videoconferencia |
-| 107 | plantilla1 | 192.168.14.15 | vmbr1 (LAN) | Servidor adicional |
-| 108 | plantilla2 | 192.168.14.16 | vmbr1 (LAN) | Servidor adicional |
-| 109 | plantilla3 | 192.168.14.17 | vmbr1 (LAN) | Base auto-escalado |
+#### Red Principal (192.168.31.0/24)
+| Dispositivo | IP | Función |
+|-------------|-----|--------|
+| Router Principal | 192.168.31.1 | Gateway a Internet |
+| Servidor Proxmox | 192.168.31.104 | Host de virtualización |
+| Tailscale (Host) | 192.168.31.204 | VPN para acceso remoto |
+| MikroTik WAN | 192.168.31.224 | Router virtual (interfaz WAN) |
 
-### Especificaciones Técnicas
+#### Red LAN Interna (192.168.14.0/24)
+| ID | Hostname | IP | Tipo | Función |
+|----|----------|-----|------|--------|
+| 100 | tailscale | 192.168.31.204 (bridge a host) | LXC | VPN Tailscale en contenedor |
+| 101 | mikrotik | 192.168.31.224 (eth0 WAN)<br>192.168.14.1 (eth1 LAN) | VM | Router/Gateway/Firewall |
+| 102 | web | 192.168.14.10 | LXC | Servidor Web Apache/PHP |
+| 103 | bd | 192.168.14.11 | LXC | Base de Datos MySQL/MariaDB |
+| 104 | haproxy | 192.168.14.12 | LXC | Load Balancer |
+| 105 | zabbix | 192.168.14.13 | LXC | Monitorización Zabbix |
+| 106 | jitsi | 192.168.14.14 | LXC | Videoconferencia Jitsi |
+| 107 | plantilla1 | 192.168.14.15 | LXC | Servidor adicional |
+| 108 | plantilla2 | 192.168.14.16 | LXC | Servidor adicional |
+| 109 | plantilla3 | 192.168.14.17 | LXC | Base para auto-escalado |
+| 200-201 | clones | 192.168.14.200-201 | LXC | Clones automáticos (escalado) |
 
-- **Plantilla Base:** Debian 12 Standard LXC
-- **CPU:** 2 cores por contenedor
-- **RAM:** 4096 MB por contenedor
-- **Disco:** 40 GB por contenedor
-- **Bridges:** vmbr0 (WAN/DHCP), vmbr1 (LAN/192.168.14.0/24)
+### Configuración de Bridges Proxmox
+
+| Bridge | Red | Función | Conectividad |
+|--------|-----|---------|-------------|
+| **vmbr0** | 192.168.31.0/24 | WAN/Internet | Conectado a red principal, acceso a internet |
+| **vmbr1** | 192.168.14.0/24 | LAN Interna | Red privada para contenedores LXC |
+
+### Especificaciones Técnicas por Contenedor
+
+| Recurso | Valor Estándar | Notas |
+|---------|----------------|-------|
+| **Sistema Operativo** | Debian 12 Standard | Plantilla LXC oficial |
+| **CPU** | 2 cores | Por contenedor |
+| **RAM** | 4096 MB (4 GB) | Por contenedor |
+| **Disco** | 40 GB | Almacenamiento por contenedor |
+| **Modo LXC** | Unprivileged | Mayor seguridad |
+
+### Flujo de Tráfico
+
+```
+Internet
+   ↓
+Router Principal (192.168.31.1)
+   ↓
+Proxmox Host (192.168.31.104)
+   ↓
+┌──────────────┬─────────────────┐
+│              │                 │
+vmbr0 (WAN)   vmbr1 (LAN)
+│              │
+│              MikroTik Router (101)
+│              192.168.14.1
+│              │
+│              ├─→ Web (102) - .14.10
+│              ├─→ BD (103) - .14.11
+│              ├─→ HAProxy (104) - .14.12
+│              ├─→ Zabbix (105) - .14.13
+│              ├─→ Jitsi (106) - .14.14
+│              ├─→ Plantilla1 (107) - .14.15
+│              ├─→ Plantilla2 (108) - .14.16
+│              └─→ Plantilla3 (109) - .14.17
+│
+Tailscale (100) - .31.204
+(Acceso remoto VPN)
+```
 
 ---
 
@@ -65,125 +132,295 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 
 ```
             AWS Cloud (us-east-1)
-      ┌───────────────────────────┐
-      │    VPC 10.4.0.0/16             │
-      │                                │
-      │  ┌───────────────────────┐  │
-      │  │  Public Subnet        │  │
-      │  │  10.4.1.0/24          │  │
-      │  │                        │  │
-      │  │  [Bastion Host]       │  │
-      │  │  [NAT Gateway]        │  │
-      │  └──────┬───────────────┘  │
-      │         │                    │
-      │      [IGW]                   │
-      │         │                    │
-      │  ┌──────┴───────────────┐  │
-      │  │  Private Subnet       │  │
-      │  │  10.4.2.0/24          │  │
-      │  │                        │  │
-      │  │  [Private Instance]   │  │
-      │  └───────────────────────┘  │
-      │                                │
+      ┌───────────────────────────────┐
+      │    VPC 10.4.0.0/16            │
+      │                               │
+      │  ┌─────────────────────────┐  │
+      │  │  Public Subnet          │  │
+      │  │  10.4.1.0/24 (AZ-A)     │  │
+      │  │                         │  │
+      │  │  [Bastion Host]         │  │
+      │  │  EC2 t3.nano            │  │
+      │  │                         │  │
+      │  │  [NAT Gateway]          │  │
+      │  │  Elastic IP             │  │
+      │  └──────┬──────────────────┘  │
+      │         │                     │
+      │      [Internet Gateway]       │
+      │         │                     │
+      │  ┌──────┴──────────────────┐  │
+      │  │  Private Subnet         │  │
+      │  │  10.4.2.0/24 (AZ-A)     │  │
+      │  │                         │  │
+      │  │  [Private Instance]     │  │
+      │  │  EC2 t3.nano            │  │
+      │  │  + SSM Agent            │  │
+      │  └─────────────────────────┘  │
+      │                               │
       │  [S3 Bucket]                  │
       │  grupo4-steven-*              │
-      └───────────────────────────┘
+      │  └─→ /backups/               │
+      │      └─→ bd_dump_*.sql.gz    │
+      └───────────────────────────────┘
 ```
 
-### Componentes AWS
+### Componentes AWS Detallados
 
-| Recurso | Tipo | CIDR/IP | Función |
-|---------|------|---------|--------|
-| VPC | Virtual Private Cloud | 10.4.0.0/16 | Red virtual aislada |
-| Public Subnet | Subnet | 10.4.1.0/24 | Recursos con acceso público |
-| Private Subnet | Subnet | 10.4.2.0/24 | Recursos sin acceso directo a internet |
-| Internet Gateway | IGW | - | Salida a internet desde VPC |
-| NAT Gateway | NAT | 10.4.1.x | Salida a internet desde subnet privada |
-| Bastion Host | t3.nano | 10.4.1.x | Punto de acceso SSH |
-| Private Instance | t3.nano | 10.4.2.x | Servidor privado con SSM |
-| S3 Bucket | Storage | - | Almacenamiento backups BD |
+| Recurso | Tipo/Tamaño | CIDR/Configuración | Función |
+|---------|-------------|-------------------|--------|
+| **VPC** | Virtual Private Cloud | 10.4.0.0/16 | Red virtual aislada (65,536 IPs) |
+| **Public Subnet** | Subnet (AZ us-east-1a) | 10.4.1.0/24 | Recursos con acceso público (256 IPs) |
+| **Private Subnet** | Subnet (AZ us-east-1a) | 10.4.2.0/24 | Recursos sin acceso directo (256 IPs) |
+| **Internet Gateway** | IGW | - | Salida/entrada internet para VPC |
+| **NAT Gateway** | NAT + Elastic IP | Public Subnet | Internet para subnet privada |
+| **Bastion Host** | EC2 t3.nano | Public Subnet | Jump server SSH (único punto entrada) |
+| **Private Instance** | EC2 t3.nano | Private Subnet | Servidor backend con SSM |
+| **S3 Bucket** | Object Storage | - | Backups automáticos de BD |
+| **Security Groups** | Firewall | Reglas restrictivas | Control de acceso por puerto/IP |
+
+### Tabla de Rutas
+
+#### Public Subnet Route Table
+| Destino | Target | Descripción |
+|---------|--------|-------------|
+| 10.4.0.0/16 | local | Tráfico interno VPC |
+| 0.0.0.0/0 | Internet Gateway | Salida a internet |
+
+#### Private Subnet Route Table
+| Destino | Target | Descripción |
+|---------|--------|-------------|
+| 10.4.0.0/16 | local | Tráfico interno VPC |
+| 0.0.0.0/0 | NAT Gateway | Salida a internet vía NAT |
 
 ---
 
-## 🔄 Auto-Escalado (Proxmox)
+## 🔄 Auto-Escalado Inteligente (Proxmox)
 
-### Mecanismo
+### Mecanismo de Escalado
 
-El sistema de auto-escalado monitoriza la carga CPU del contenedor base (LXC 109) y clona instancias automáticamente según umbrales:
+El sistema monitoriza la carga CPU del contenedor base (LXC 109) y gestiona clones automáticamente:
 
-- **Umbral Superior:** CPU > 2.0 → Crear clon
-- **Umbral Inferior:** CPU < 1.5 → Eliminar clon
-- **Clones Máximos:** 2 (IDs 200-201)
+**Parámetros de Configuración:**
+- **Contenedor Base:** LXC 109 (192.168.14.17)
+- **Umbral de Escalado:** CPU > 2.0 (200% uso)
+- **Umbral de Reducción:** CPU < 1.5 (150% uso)
+- **Clones Máximos:** 2 instancias (IDs 200-201)
+- **IPs de Clones:** 192.168.14.200, 192.168.14.201
+- **Intervalo de Monitoreo:** Cada 60 segundos
 
-### Flujo de Escalado
+### Flujo de Trabajo del Auto-Escalado
 
 ```
-Monitoreo CPU (109)
-     │
-     │ CPU > 2.0?
-     ├─── SÍ → Crear snapshot
-     │         │
-     │         └─→ Clonar a 200/201
-     │             │
-     │             └─→ Asignar IP .200/.201
-     │
-     │ CPU < 1.5?
-     └─── SÍ → Eliminar clon 201/200
-               │
-               └─→ Limpiar snapshots
+[Inicio] Script autoescalado.sh ejecutándose
+    ↓
+[Monitor] Obtener CPU de LXC 109
+    ↓
+    ├─→ CPU > 2.0 (Alta carga)
+    │   ↓
+    │   [Verificar] ¿Hay clones activos?
+    │   ↓
+    │   ├─→ NO: Crear snapshot → Clonar a LXC 200
+    │   │        → Configurar IP .14.200
+    │   │        → Iniciar LXC 200
+    │   │        → Registrar en logs
+    │   │
+    │   └─→ SÍ (1 clon): Clonar a LXC 201
+    │                    → Configurar IP .14.201
+    │                    → Iniciar LXC 201
+    │                    → Máximo alcanzado
+    │
+    └─→ CPU < 1.5 (Baja carga)
+        ↓
+        [Verificar] ¿Hay clones activos?
+        ↓
+        └─→ SÍ: Detener último clon (201 o 200)
+                → Eliminar clon
+                → Limpiar snapshot
+                → Registrar en logs
+
+[Loop] Esperar 60s y repetir
+```
+
+### Comandos Clave del Script
+
+```bash
+# Obtener carga CPU
+CPU_LOAD=$(pct exec $BASE_LXC -- top -bn1 | grep "Cpu(s)" | awk '{print $2}')
+
+# Crear snapshot
+pvesh create /nodes/$NODE/lxc/$BASE_LXC/snapshot --snapname auto-scale-snapshot
+
+# Clonar contenedor
+pct clone $BASE_LXC $CLONE_ID --hostname clone-$CLONE_ID
+
+# Configurar IP estática
+pct set $CLONE_ID --net0 name=eth0,bridge=vmbr1,ip=192.168.14.$IP_SUFFIX/24,gw=192.168.14.1
+
+# Iniciar clon
+pct start $CLONE_ID
 ```
 
 ---
 
 ## 💾 Sistema de Backups
 
-### Backup de Base de Datos a S3
+### Backup Automático de Base de Datos a S3
 
-1. **Dump local:** `mysqldump` genera archivo SQL
-2. **Compresión:** Gzip reduce tamaño
-3. **Subida S3:** AWS CLI sube a `s3://grupo4-steven-*/backups/`
-4. **Timestamp:** Cada backup incluye fecha/hora
-5. **Logs:** Registro en `/var/log/backup-bd.log`
+**Script:** `aws/scripts/dump_s3_db.sh`
+
+**Proceso:**
+1. **Dump Database:** `mysqldump` extrae datos completos de MySQL/MariaDB
+2. **Compresión:** `gzip` reduce tamaño (~70-80% reducción)
+3. **Timestamp:** Formato `bd_dump_YYYYMMDD_HHMMSS.sql.gz`
+4. **Upload S3:** AWS CLI sube a bucket con versionado
+5. **Verificación:** Checksum MD5 para integridad
+6. **Limpieza:** Elimina archivos locales antiguos (>7 días)
+7. **Logging:** Registra éxito/fallo en `/var/log/backup-bd.log`
+
+**Ejemplo de Nombre de Backup:**
+```
+s3://grupo4-steven-abc123/backups/bd_dump_20260131_142530.sql.gz
+```
+
+**Programación (cron):**
+```bash
+# Backup diario a las 02:00 AM
+0 2 * * * /path/to/dump_s3_db.sh >> /var/log/backup-bd.log 2>&1
+```
 
 ---
 
 ## 🔐 Seguridad
 
-### Proxmox
-- LXC unprivileged (no root en host)
-- Firewall habilitado en interfaces
-- Passwords configurables
-- Tailscale VPN para acceso remoto
+### Capa Proxmox
 
-### AWS
-- Security Groups restrictivos
-- Bastion como único punto de entrada SSH
-- Instancia privada sin IP pública
-- SSM Session Manager (sin SSH directo)
-- S3 con acceso bloqueado público
-- IAM roles con LabInstanceProfile
+| Medida | Implementación | Beneficio |
+|--------|----------------|----------|
+| **LXC Unprivileged** | Contenedores sin privilegios root en host | Aislamiento y protección del host |
+| **Firewall Habilitado** | nftables/iptables en interfaces | Control de tráfico por puerto/protocolo |
+| **Red Segregada** | vmbr0 (WAN) / vmbr1 (LAN) separadas | Aislamiento de redes pública/privada |
+| **Passwords Fuertes** | Contraseñas configurables por script | Autenticación robusta |
+| **Tailscale VPN** | Túnel cifrado WireGuard | Acceso remoto seguro sin exponer puertos |
+
+### Capa AWS
+
+| Medida | Implementación | Beneficio |
+|--------|----------------|----------|
+| **Security Groups** | Reglas whitelist por IP/puerto | Firewall a nivel de instancia |
+| **Bastion Host** | Único punto de entrada SSH | Reduce superficie de ataque |
+| **Sin IP Pública** | Instancia privada sin dirección pública | Invisible desde internet |
+| **SSM Session Manager** | Acceso sin SSH keys | Gestión segura sin exponer puerto 22 |
+| **S3 Block Public** | Bloqueo de acceso público al bucket | Datos privados protegidos |
+| **IAM Roles** | LabInstanceProfile con permisos mínimos | Principio de menor privilegio |
+| **Encryption** | EBS volúmenes cifrados por defecto | Datos en reposo protegidos |
 
 ---
 
-## 📊 Monitorización
-- **Zabbix (LXC 105):** Monitorización centralizada de infraestructura
-- **CloudWatch (AWS):** Métricas nativas de instancias EC2
-- **Logs locales:** `/var/log/` en cada contenedor
+## 📊 Monitorización y Logging
+
+### Zabbix (LXC 105 - 192.168.14.13)
+
+**Monitoriza:**
+- Estado de contenedores LXC (up/down)
+- Uso de CPU, RAM, disco
+- Tráfico de red (interfaces vmbr0/vmbr1)
+- Servicios críticos (Apache, MySQL, HAProxy)
+- Auto-escalado (creación/eliminación de clones)
+
+### CloudWatch (AWS)
+
+**Métricas Nativas:**
+- EC2: CPU, red, disco, estado de instancia
+- S3: Tamaño de bucket, número de objetos
+- VPC: Tráfico NAT Gateway, uso de ancho de banda
+
+### Logs Locales
+
+| Sistema | Ubicación | Contenido |
+|---------|-----------|----------|
+| **Proxmox** | `/var/log/pve/` | Logs de virtualización |
+| **Auto-escalado** | `/var/log/autoescalado.log` | Eventos de escalado |
+| **Backup BD** | `/var/log/backup-bd.log` | Resultados de backups |
+| **Apache** | `/var/log/apache2/` | Access/error logs |
+| **MySQL** | `/var/log/mysql/` | Query logs, errores |
 
 ---
 
-## 🔗 Conectividad
+## 🔗 Conectividad y Accesos
 
-### Acceso Remoto
-- **Tailscale VPN:** Acceso seguro a red Proxmox desde cualquier lugar
-- **Bastion Host (AWS):** SSH jump server para instancia privada
-- **SSM (AWS):** Acceso sin SSH vía AWS Systems Manager
+### Acceso Remoto a Proxmox
+
+**Vía Tailscale VPN:**
+```bash
+# Conectar a red Tailscale
+tailscale up
+
+# Acceso web a Proxmox
+https://192.168.31.104:8006
+
+# Acceso SSH a contenedores
+ssh root@192.168.14.10  # Web
+ssh root@192.168.14.11  # BD
+```
+
+### Acceso a AWS
+
+**Bastion Host (SSH Jump):**
+```bash
+# Conexión al bastion
+ssh -i grupo4-key.pem ec2-user@<bastion-public-ip>
+
+# Desde bastion, saltar a instancia privada
+ssh ec2-user@10.4.2.x
+```
+
+**SSM Session Manager (sin SSH):**
+```bash
+# Requiere AWS CLI configurado
+aws ssm start-session --target <instance-id>
+```
 
 ### Inter-Conectividad
-- **LAN Proxmox:** Comunicación directa entre LXC vía 192.168.14.0/24
-- **AWS Subnets:** Routing entre subnets vía Route Tables
-- **Internet:** MikroTik + NAT Gateway proveen salida a internet
+
+| Origen | Destino | Protocolo | Descripción |
+|--------|---------|-----------|-------------|
+| LXC 102-109 | 192.168.14.0/24 | TCP/UDP | Comunicación entre contenedores |
+| LXC → Internet | 0.0.0.0/0 | TCP/UDP | Vía MikroTik (192.168.14.1) |
+| Public Subnet | Private Subnet | TCP | Vía routing interno VPC |
+| Private Subnet | Internet | TCP/UDP | Vía NAT Gateway |
+| Tailscale | LAN Proxmox | Cifrado | Túnel WireGuard |
 
 ---
 
-**Documento actualizado:** 31 de enero de 2026
+## 🚧 Componentes en Desarrollo
+
+> **Nota:** Los siguientes componentes están planificados o en implementación:
+
+- [ ] **HAProxy Load Balancing:** Configuración de balanceo entre múltiples servidores web
+- [ ] **Jitsi Meet:** Despliegue completo de videoconferencia
+- [ ] **Zabbix Dashboards:** Paneles personalizados de monitorización
+- [ ] **Alertas Automatizadas:** Notificaciones por email/Telegram
+- [ ] **HTTPS/SSL:** Certificados SSL para servicios web
+- [ ] **Failover Automático:** Alta disponibilidad con replicación
+- [ ] **Backup Incremental:** Backups diferenciales para optimización
+
+---
+
+## 📝 Notas Técnicas
+
+### Cambios Recientes
+- **31/01/2026:** Actualización de IPs reales de infraestructura Proxmox
+- **31/01/2026:** Documentación detallada de topología de red
+- **31/01/2026:** Ampliación de sección de seguridad y monitorización
+
+### Referencias
+- Proxmox VE: https://pve.proxmox.com/wiki/Main_Page
+- MikroTik RouterOS: https://wiki.mikrotik.com/
+- AWS CloudFormation: https://docs.aws.amazon.com/cloudformation/
+- Tailscale: https://tailscale.com/kb/
+
+---
+
+**Documento actualizado:** 31 de enero de 2026, 14:24 CET  
+**Estado:** Work in Progress 🚧  
+**Autor:** Grupo 4 - ASIR Cantabria
