@@ -16,6 +16,7 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 |------------|-----------|--------|-------------|
 | **Proxmox VE** | `192.168.31.104` | `8006` | Panel de administración Proxmox |
 | **ProxMenux Monitor** | `192.168.31.104` | `8008` | Sistema de monitorización |
+| **Zabbix** | `192.168.31.224` | `Ninguno` | Sistema de monitorización (`/zabbix`) |
 | **HAProxy Stats** | `192.168.31.224` | `9999` | Panel de estadísticas HAProxy (`/stats`) |
 
 ### Topología de Red
@@ -425,29 +426,6 @@ aws ssm start-session --target <instance-id>
 | MikroTik:9999 | HAProxy:80 | HTTP | Proxy para stats dashboard |
 
 ---
-
-## 🚧 Componentes en Desarrollo
-
-> **Nota:** Los siguientes componentes están planificados o en implementación:
-
-- [ ] **HAProxy Load Balancing:** Configuración de balanceo entre múltiples servidores web
-- [X] **HAProxy Stats Dashboard:** Panel web de estadísticas en puerto 9999 ✅
-- [ ] **Jitsi Meet:** Despliegue completo de videoconferencia
-- [ ] **Zabbix Dashboards:** Paneles personalizados de monitorización
-- [ ] **Alertas Automatizadas:** Notificaciones por email/Telegram
-- [ ] **HTTPS/SSL:** Certificados SSL para servicios web
-- [ ] **Failover Automático:** Alta disponibilidad con replicación
-- [ ] **Backup Incremental:** Backups diferenciales para optimización
-
----
-
-## 📝 Notas Técnicas
-
-### Cambios Recientes
-- **31/01/2026 14:31:** Añadido acceso a HAProxy Stats Dashboard (192.168.31.224:9999/stats)
-- **31/01/2026 14:24:** Actualización de IPs reales de infraestructura Proxmox
-- **31/01/2026:** Documentación detallada de topología de red
-- **31/01/2026:** Ampliación de sección de seguridad y monitorización
 
 ### Referencias
 - Proxmox VE: https://pve.proxmox.com/wiki/Main_Page
