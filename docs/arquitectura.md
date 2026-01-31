@@ -73,12 +73,12 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 | 101 | mikrotik | 192.168.31.224 (eth0 WAN)<br>192.168.14.1 (eth1 LAN) | VM | Router/Gateway/Firewall |
 | 102 | web | 192.168.14.10 | LXC | Servidor Web Wordpress/Nginx/PHP |
 | 103 | bd | 192.168.14.11 | LXC | Base de Datos MySQL/MariaDB |
-| 104 | haproxy | 192.168.14.12 | LXC | Load Balancer (backend) |
+| 104 | haproxy | 192.168.14.12 | LXC | Load Balancer |
 | 105 | zabbix | 192.168.14.13 | LXC | Monitorización Zabbix |
 | 106 | jitsi | 192.168.14.14 | LXC | Videoconferencia Jitsi |
 | 107 | plantilla1 | 192.168.14.15 | LXC | Servidor adicional |
 | 108 | plantilla2 | 192.168.14.16 | LXC | Servidor adicional |
-| 109 | plantilla3 | 192.168.14.17 | LXC | Base para auto-escalado |
+| 109 | plantilla3 | 192.168.14.17 | LXC | Servidor adicional |
 | 200-201 | clones | 192.168.14.200-201 | LXC | Clones automáticos (escalado) |
 
 ### Configuración de Bridges Proxmox
