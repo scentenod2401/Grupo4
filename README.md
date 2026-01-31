@@ -192,5 +192,5 @@ Cada miembro del equipo trabaja en su rama personal con la misma estructura y co
 ---
 
 <div align="center">
-  <sub>Desarrollado con ❤️ por el Grupo 4 - ASIR 2024/2026</sub>
+  <sub>Desarrollado por el Grupo 4 - ASIR 2024/2026</sub>
 </div>
