@@ -45,34 +45,6 @@
 
 ---
 
-## 📂 Estructura del Proyecto
-
-```
-grupo4/
-├── proxmox/              # Infraestructura Proxmox
-│   ├── despliegue_proxmox.sh
-│   ├── autoescalado.sh
-│   └── configuracion/
-│       └── lxc-templates/
-├── aws/                  # Infraestructura AWS
-│   ├── cloudformation/
-│   │   └── grupo4_steven_final.yaml
-│   └── scripts/
-│       ├── dump_s3_db.sh
-│       └── dump_bd_S3.ps1
-├── scripts/              # Utilidades compartidas
-│   ├── backup/
-│   │   ├── backup_bd.ps1
-│   └── servicios/
-│       ├── reinicio_apache.ps1
-│       └── reinicio_mysql.ps1
-└── docs/                 # Documentación técnica
-    ├── arquitectura.md
-    └── instalacion.md
-```
-
----
-
 ## 🚀 Quick Start
 
 ### Prerrequisitos
