@@ -25,7 +25,7 @@
 - **Tailscale VPN** (LXC 100) - Acceso remoto seguro
 - **MikroTik Router** (VM 101) - Gateway y routing
 - **Cluster LXC** (102-109) - Servicios containerizados
-  - Web Servers (HAProxy + Apache)
+  - Web Servers (Wordpress + Nginx + PHP)
   - Base de Datos (MySQL/MariaDB)
   - Monitoring (Zabbix)
   - Comunicaciones (Jitsi)
@@ -58,11 +58,11 @@ grupo4/
 │   ├── cloudformation/
 │   │   └── grupo4_steven_final.yaml
 │   └── scripts/
-│       └── dump_s3_db.sh
+│       ├── dump_s3_db.sh
+│       └── dump_bd_S3.ps1
 ├── scripts/              # Utilidades compartidas
 │   ├── backup/
 │   │   ├── backup_bd.ps1
-│   │   └── dump_bd_S3.ps1
 │   └── servicios/
 │       ├── reinicio_apache.ps1
 │       └── reinicio_mysql.ps1
@@ -143,7 +143,7 @@ Cada miembro del equipo trabaja en su rama personal con la misma estructura y co
 ### Proxmox Network
 | Segmento | CIDR | Uso | Gateway |
 |----------|------|-----|---------||
-| WAN (vmbr0) | DHCP | Internet + Tailscale | DHCP |
+| WAN (vmbr0) | DHCP 192.168.31.0/24 | Internet + Tailscale | DHCP |
 | LAN (vmbr1) | 192.168.14.0/24 | Contenedores LXC | 192.168.14.1 (MikroTik) |
 
 ### AWS Network
@@ -171,7 +171,7 @@ Cada miembro del equipo trabaja en su rama personal con la misma estructura y co
 | **Networking** | MikroTik RouterOS, Tailscale VPN |
 | **Automatización** | Bash, PowerShell, CloudFormation |
 | **Monitorización** | Zabbix |
-| **Web Stack** | Apache, PHP, MySQL/MariaDB, HAProxy |
+| **Web Stack** | Nginx, PHP, MySQL/MariaDB, HAProxy |
 
 ---
 
@@ -192,5 +192,5 @@ Cada miembro del equipo trabaja en su rama personal con la misma estructura y co
 ---
 
 <div align="center">
-  <sub>Desarrollado con ❤️ por el Grupo 4 - ASIR 2024/2026</sub>
+  <sub>Desarrollado por el Grupo 4 - ASIR 2024/2026</sub>
 </div>
