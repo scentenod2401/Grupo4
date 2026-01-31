@@ -16,6 +16,7 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 |------------|-----------|--------|-------------|
 | **Proxmox VE** | `192.168.31.104` | `8006` | Panel de administración Proxmox |
 | **ProxMenux Monitor** | `192.168.31.104` | `8008` | Sistema de monitorización |
+| **HAProxy Stats** | `192.168.31.224` | `9999` | Panel de estadísticas HAProxy (`/stats`) |
 
 ### Topología de Red
 
@@ -43,7 +44,7 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
                               WAN:     │     LAN:
                            192.168.31.224   192.168.14.1
                               eth0     │     eth1
-                                       │       │
+                         (HAProxy:9999)│       │
                                        │    [┌──┴──────────┐
                                        │    │ LXC 102-109  │
                                        │    │ .14.10-.17   │
@@ -61,16 +62,16 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 | Router Principal | 192.168.31.254 | Gateway a Internet |
 | Servidor Proxmox | 192.168.31.104 | Host de virtualización |
 | Tailscale (Host) | 192.168.31.204 | VPN para acceso remoto |
-| MikroTik WAN | 192.168.31.224 | Router virtual (interfaz WAN) |
+| MikroTik WAN | 192.168.31.224 | Router virtual (interfaz WAN) + HAProxy Stats |
 
 #### Red LAN Interna (192.168.14.0/24)
 | ID | Hostname | IP | Tipo | Función |
 |----|----------|-----|------|--------|
 | 100 | tailscale | 192.168.31.204 (bridge a host) | LXC | VPN Tailscale en contenedor |
-| 101 | mikrotik | 192.168.31.224 (eth0 WAN)<br>192.168.14.1 (eth1 LAN) | VM | Router/Gateway/Firewall |
+| 101 | mikrotik | 192.168.31.224 (eth0 WAN)<br>192.168.14.1 (eth1 LAN) | VM | Router/Gateway/Firewall + HAProxy Proxy |
 | 102 | web | 192.168.14.10 | LXC | Servidor Web Apache/PHP |
 | 103 | bd | 192.168.14.11 | LXC | Base de Datos MySQL/MariaDB |
-| 104 | haproxy | 192.168.14.12 | LXC | Load Balancer |
+| 104 | haproxy | 192.168.14.12 | LXC | Load Balancer (backend) |
 | 105 | zabbix | 192.168.14.13 | LXC | Monitorización Zabbix |
 | 106 | jitsi | 192.168.14.14 | LXC | Videoconferencia Jitsi |
 | 107 | plantilla1 | 192.168.14.15 | LXC | Servidor adicional |
@@ -117,11 +118,14 @@ vmbr0 (WAN)   vmbr1 (LAN)
 │              ├─→ Zabbix (105) - .14.13
 │              ├─→ Jitsi (106) - .14.14
 │              ├─→ Plantilla1 (107) - .14.15
-│              ├─→ Plantilla2 (108) - .14.16
+│              ├── Plantilla2 (108) - .14.16
 │              └─→ Plantilla3 (109) - .14.17
 │
 Tailscale (100) - .31.204
 (Acceso remoto VPN)
+
+MikroTik WAN (192.168.31.224)
+  └─→ HAProxy Stats Web: :9999/stats
 ```
 
 ---
@@ -318,6 +322,27 @@ s3://grupo4-steven-abc123/backups/bd_dump_20260131_142530.sql.gz
 
 ## 📊 Monitorización y Logging
 
+### HAProxy Stats Dashboard
+
+**Acceso Web:** `http://192.168.31.224:9999/stats`
+
+**Información Disponible:**
+- Estado de backends en tiempo real (up/down)
+- Número de conexiones activas
+- Tráfico HTTP (requests/sec)
+- Latencia de respuesta por backend
+- Health checks de servidores
+- Distribución de carga entre servidores
+
+**Arquitectura HAProxy:**
+```
+Clientes → MikroTik:9999 → HAProxy (LXC 104) → Backends
+                           192.168.14.12        │
+                                                ├─→ Web1 (.14.10)
+                                                ├─→ Web2 (clone .14.200)
+                                                └─→ Web3 (clone .14.201)
+```
+
 ### Zabbix (LXC 105 - 192.168.14.13)
 
 **Monitoriza:**
@@ -343,6 +368,7 @@ s3://grupo4-steven-abc123/backups/bd_dump_20260131_142530.sql.gz
 | **Backup BD** | `/var/log/backup-bd.log` | Resultados de backups |
 | **Apache** | `/var/log/apache2/` | Access/error logs |
 | **MySQL** | `/var/log/mysql/` | Query logs, errores |
+| **HAProxy** | `/var/log/haproxy.log` | Balanceo y conexiones |
 
 ---
 
@@ -358,9 +384,16 @@ tailscale up
 # Acceso web a Proxmox
 https://192.168.31.104:8006
 
+# Acceso a ProxMenux Monitor
+http://192.168.31.104:8008
+
+# Acceso a HAProxy Stats
+http://192.168.31.224:9999/stats
+
 # Acceso SSH a contenedores
 ssh root@192.168.14.10  # Web
 ssh root@192.168.14.11  # BD
+ssh root@192.168.14.12  # HAProxy
 ```
 
 ### Acceso a AWS
@@ -389,17 +422,42 @@ aws ssm start-session --target <instance-id>
 | Public Subnet | Private Subnet | TCP | Vía routing interno VPC |
 | Private Subnet | Internet | TCP/UDP | Vía NAT Gateway |
 | Tailscale | LAN Proxmox | Cifrado | Túnel WireGuard |
+| MikroTik:9999 | HAProxy:80 | HTTP | Proxy para stats dashboard |
 
 ---
+
+## 🚧 Componentes en Desarrollo
+
+> **Nota:** Los siguientes componentes están planificados o en implementación:
+
+- [ ] **HAProxy Load Balancing:** Configuración de balanceo entre múltiples servidores web
+- [X] **HAProxy Stats Dashboard:** Panel web de estadísticas en puerto 9999 ✅
+- [ ] **Jitsi Meet:** Despliegue completo de videoconferencia
+- [ ] **Zabbix Dashboards:** Paneles personalizados de monitorización
+- [ ] **Alertas Automatizadas:** Notificaciones por email/Telegram
+- [ ] **HTTPS/SSL:** Certificados SSL para servicios web
+- [ ] **Failover Automático:** Alta disponibilidad con replicación
+- [ ] **Backup Incremental:** Backups diferenciales para optimización
+
+---
+
+## 📝 Notas Técnicas
+
+### Cambios Recientes
+- **31/01/2026 14:31:** Añadido acceso a HAProxy Stats Dashboard (192.168.31.224:9999/stats)
+- **31/01/2026 14:24:** Actualización de IPs reales de infraestructura Proxmox
+- **31/01/2026:** Documentación detallada de topología de red
+- **31/01/2026:** Ampliación de sección de seguridad y monitorización
 
 ### Referencias
 - Proxmox VE: https://pve.proxmox.com/wiki/Main_Page
 - MikroTik RouterOS: https://wiki.mikrotik.com/
+- HAProxy Documentation: https://www.haproxy.org/
 - AWS CloudFormation: https://docs.aws.amazon.com/cloudformation/
 - Tailscale: https://tailscale.com/kb/
 
 ---
 
-**Documento actualizado:** 31 de enero de 2026, 14:24 CET  
+**Documento actualizado:** 31 de enero de 2026, 14:31 CET  
 **Estado:** Work in Progress 🚧  
 **Autor:** Grupo 4 - ASIR Cantabria
