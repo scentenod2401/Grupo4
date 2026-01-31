@@ -58,7 +58,7 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 #### Red Principal (192.168.31.0/24)
 | Dispositivo | IP | Función |
 |-------------|-----|--------|
-| Router Principal | 192.168.31.1 | Gateway a Internet |
+| Router Principal | 192.168.31.254 | Gateway a Internet |
 | Servidor Proxmox | 192.168.31.104 | Host de virtualización |
 | Tailscale (Host) | 192.168.31.204 | VPN para acceso remoto |
 | MikroTik WAN | 192.168.31.224 | Router virtual (interfaz WAN) |
@@ -391,27 +391,6 @@ aws ssm start-session --target <instance-id>
 | Tailscale | LAN Proxmox | Cifrado | Túnel WireGuard |
 
 ---
-
-## 🚧 Componentes en Desarrollo
-
-> **Nota:** Los siguientes componentes están planificados o en implementación:
-
-- [ ] **HAProxy Load Balancing:** Configuración de balanceo entre múltiples servidores web
-- [ ] **Jitsi Meet:** Despliegue completo de videoconferencia
-- [ ] **Zabbix Dashboards:** Paneles personalizados de monitorización
-- [ ] **Alertas Automatizadas:** Notificaciones por email/Telegram
-- [ ] **HTTPS/SSL:** Certificados SSL para servicios web
-- [ ] **Failover Automático:** Alta disponibilidad con replicación
-- [ ] **Backup Incremental:** Backups diferenciales para optimización
-
----
-
-## 📝 Notas Técnicas
-
-### Cambios Recientes
-- **31/01/2026:** Actualización de IPs reales de infraestructura Proxmox
-- **31/01/2026:** Documentación detallada de topología de red
-- **31/01/2026:** Ampliación de sección de seguridad y monitorización
 
 ### Referencias
 - Proxmox VE: https://pve.proxmox.com/wiki/Main_Page
