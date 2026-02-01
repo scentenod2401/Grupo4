@@ -48,8 +48,8 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
                               eth0     │     eth1
                                        │       │
                                        │    ┌──┴──── ──────┐
-                                       │    │ LXC 102-109  │
-                                       │    │ .14.10-.17   │
+                                       │    │ LXC 102-105  │
+                                       │    │ .14.10-13    │
                                        │    └──────────────┘
                                        │
                                   TAILSCALE VPN
@@ -75,10 +75,6 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 | 103 | bd | 192.168.14.11 | LXC | Base de Datos MySQL/MariaDB |
 | 104 | haproxy | 192.168.14.12 | LXC | Load Balancer |
 | 105 | zabbix | 192.168.14.13 | LXC | Monitorización Zabbix |
-| 106 | jitsi | 192.168.14.14 | LXC | Videoconferencia Jitsi |
-| 107 | plantilla1 | 192.168.14.15 | LXC | Servidor adicional |
-| 108 | plantilla2 | 192.168.14.16 | LXC | Servidor adicional |
-| 109 | plantilla3 | 192.168.14.17 | LXC | Servidor adicional |
 | 200-201 | clones | 192.168.14.200-201 | LXC | Clones automáticos (escalado) |
 
 ### Configuración de Bridges Proxmox
@@ -97,6 +93,17 @@ Este documento describe la arquitectura completa de la infraestructura híbrida 
 | **RAM** | 4096 MB (4 GB) | Por contenedor |
 | **Disco** | 40 GB | Almacenamiento por contenedor |
 | **Modo LXC** | Unprivileged | Mayor seguridad |
+
+### Almacenamiento Persistente - WordPress
+
+Los datos de `wp-content` se almacenan en bind mount del host Proxmox (`/data/wordpress-shared`) para permitir persistencia y compartición entre clones:
+
+```bash
+mkdir -p /data/wordpress-shared/wp-content/{languages,plugins,themes,upgrade,uploads,cache,mu-plugins}
+chown -R 100033:100033 /data/wordpress-shared/
+chmod 755 /data/wordpress-shared/
+# Configuración en LXC: lxc.mount.entry: /data/wordpress-shared var/www/html/wp-content none bind 0 0
+```
 
 ### Flujo de Tráfico
 
@@ -117,11 +124,7 @@ vmbr0 (WAN)   vmbr1 (LAN)
 │              ├─→ Web (102) - .14.10
 │              ├─→ BD (103) - .14.11
 │              ├─→ HAProxy (104) - .14.12
-│              ├─→ Zabbix (105) - .14.13
-│              ├─→ Jitsi (106) - .14.14
-│              ├─→ Plantilla1 (107) - .14.15
-│              ├── Plantilla2 (108) - .14.16
-│              └─→ Plantilla3 (109) - .14.17
+│              └─→ Zabbix (105) - .14.13
 │
 Tailscale (100) - .31.204
 (Acceso remoto VPN)
@@ -207,10 +210,10 @@ MikroTik WAN (192.168.31.224)
 
 ### Mecanismo de Escalado
 
-El sistema monitoriza la carga CPU del contenedor base (LXC 109) y gestiona clones automáticamente:
+El sistema monitoriza la carga CPU del contenedor base (LXC 102) y gestiona clones automáticamente:
 
 **Parámetros de Configuración:**
-- **Contenedor Base:** LXC 109 (192.168.14.17)
+- **Contenedor Base:** LXC 102 (192.168.14.10)
 - **Umbral de Escalado:** CPU > 2.0 (200% uso)
 - **Umbral de Reducción:** CPU < 1.5 (150% uso)
 - **Clones Máximos:** 2 instancias (IDs 200-201)
@@ -222,7 +225,7 @@ El sistema monitoriza la carga CPU del contenedor base (LXC 109) y gestiona clon
 ```
 [Inicio] Script autoescalado.sh ejecutándose
     ↓
-[Monitor] Obtener CPU de LXC 109
+[Monitor] Obtener CPU de LXC 102
     ↓
     ├─→ CPU > 2.0 (Alta carga)
     │   ↓
@@ -445,7 +448,6 @@ aws ssm start-session --target <instance-id>
 - Tailscale: https://tailscale.com/kb/
 
 ---
-
-**Documento actualizado:** 31 de enero de 2026, 14:31 CET  
+ 
 **Estado:** Work in Progress 🚧  
 **Autor:** Grupo 4 - ASIR Cantabria
