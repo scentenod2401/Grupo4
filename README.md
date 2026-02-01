@@ -19,32 +19,6 @@
 
 ---
 
-## 🏭 Arquitectura del Sistema
-
-### 📍 Infraestructura Local (Proxmox)
-- **Tailscale VPN** (LXC 100) - Acceso remoto seguro
-- **MikroTik Router** (VM 101) - Gateway y routing
-- **Cluster LXC** (102-109) - Servicios containerizados
-  - Web Servers (Wordpress + Nginx + PHP)
-  - Base de Datos (MySQL/MariaDB)
-  - Monitoring (Zabbix)
-  - Comunicaciones (Jitsi)
-
-### ☁️ Infraestructura Cloud (AWS)
-- **VPC Multi-AZ** (10.4.0.0/16)
-- **Bastion Host** + Instancia Privada
-- **NAT Gateway** + Internet Gateway
-- **S3 Bucket** para backups automáticos
-- **SSM** para gestión sin SSH
-
-### 🔄 Funcionalidades Avanzadas
-- ⚡ Auto-escalado basado en carga CPU
-- 💾 Backups automáticos a S3
-- 🔐 Acceso seguro vía Tailscale
-- 📊 Monitorización centralizada
-
----
-
 ## 📂 Estructura del Proyecto
 
 ```
@@ -70,6 +44,32 @@ grupo4/
     ├── arquitectura.md
     └── instalacion.md
 ```
+
+---
+
+## 🏭 Arquitectura del Sistema
+
+### 📍 Infraestructura Local (Proxmox)
+- **Tailscale VPN** (LXC 100) - Acceso remoto seguro
+- **MikroTik Router** (VM 101) - Gateway y routing
+- **Cluster LXC** (102-109) - Servicios containerizados
+  - Web Servers (Wordpress + Nginx + PHP)
+  - Base de Datos (MySQL/MariaDB)
+  - Monitoring (Zabbix)
+  - Comunicaciones (Jitsi)
+
+### ☁️ Infraestructura Cloud (AWS)
+- **VPC Multi-AZ** (10.4.0.0/16)
+- **Bastion Host** + Instancia Privada
+- **NAT Gateway** + Internet Gateway
+- **S3 Bucket** para backups automáticos
+- **SSM** para gestión sin SSH
+
+### 🔄 Funcionalidades Avanzadas
+- ⚡ Auto-escalado basado en carga CPU
+- 💾 Backups automáticos a S3
+- 🔐 Acceso seguro vía Tailscale
+- 📊 Monitorización centralizada
 
 ---
 
