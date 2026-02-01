@@ -34,6 +34,9 @@ grupo4/
 │   └── scripts/
 │       ├── dump_s3_db.sh
 │       └── dump_bd_S3.ps1
+├── recursos/                  # Recursos general
+│   └── diagramas/
+│       └── Retos-v3.drawio.png
 ├── scripts/              # Utilidades compartidas
 │   ├── backup/
 │   │   ├── backup_bd.ps1
@@ -52,7 +55,7 @@ grupo4/
 ### 📍 Infraestructura Local (Proxmox)
 - **Tailscale VPN** (LXC 100) - Acceso remoto seguro
 - **MikroTik Router** (VM 101) - Gateway y routing
-- **Cluster LXC** (102-109) - Servicios containerizados
+- **Cluster LXC** (102-105) - Servicios containerizados
   - Web Servers (Wordpress + Nginx + PHP)
   - Base de Datos (MySQL/MariaDB)
   - Monitoring (Zabbix)
