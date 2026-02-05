@@ -1,0 +1,163 @@
+/* --- 1. BASE Y LOGO --- */
+html, body, #page, #content, .elementor-canvas { background-color: #000000 !important; }
+* { font-family: 'IBM Plex Mono', monospace !important; }
+
+/* --- 2. LOGO CORPORATIVO (PLATA FUTURISTA) --- */
+body::before {
+    content: "";
+    position: fixed;
+    top: 20px;
+    left: 25px;
+    width: 200px; /* Ancho ajustado para las alas del logo */
+    height: 100px;
+    background-image: url('https://192.168.31.224/wp-content/uploads/2026/02/zero_day_system_logo_optimized.png') !important;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 99999 !important;
+    pointer-events: none;
+    /* Un brillo sutil para resaltar el metalizado sobre el negro */
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+}
+
+/* --- 2. ANIMACIÓN DEL CURSOR --- */
+@keyframes parpadeo {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* --- 3. LIMPIEZA DE CABECERAS --- */
+header, footer, .site-header, .entry-header, .tml-title, #site-header, .site-branding {
+    display: none !important;
+    height: 0 !important;
+}
+
+/* --- 4. BOTONES ELEMENTOR (HOME) --- */
+.elementor-button {
+    color: #FFFFFF !important;
+    background-color: transparent !important;
+    border: 1px solid #444444 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+.elementor-button-text::after {
+    content: "_";
+    display: inline-block;
+    margin-left: 5px;
+    animation: parpadeo 1s steps(2, start) infinite;
+}
+
+.elementor-button:hover {
+    background-color: #880000 !important;
+    color: #000000 !important;
+    box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.7) !important;
+    border-color: #FF0000 !important;
+}
+
+/* --- 5. RECUADRO DEL LOGIN (PÁGINA 47) --- */
+.page-id-47 .tml {
+    margin: 100px auto !important;
+    max-width: 450px !important;
+    padding: 40px !important;
+    border: 1px solid #222222 !important; /* El marco que querías */
+    background-color: #050505 !important;
+}
+
+.tml-label, label { color: #888888 !important; text-transform: uppercase; font-size: 12px; }
+
+.tml input[type="text"], .tml input[type="password"], .tml input[type="email"] { 
+    background-color: #000000 !important; 
+    border: 1px solid #333333 !important; 
+    color: #FFFFFF !important; 
+    padding: 12px !important;
+    margin-bottom: 20px !important;
+    width: 100% !important;
+}
+
+/* --- 6. BOTÓN ACCEDER CON ANIMACIÓN --- */
+.tml-button, input[type="submit"] {
+    width: 100% !important;
+    padding: 15px !important;
+    background-color: #880000 !important;
+    color: #000000 !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    text-transform: uppercase;
+}
+
+.tml-button::after {
+    content: "_";
+    animation: parpadeo 1s steps(2, start) infinite;
+}
+
+.tml-button:hover, input[type="submit"]:hover {
+    background-color: #FF0000 !important;
+    box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.6) !important;
+}
+
+/* --- 7. BOTÓN IDENTIFICARSE ESPECÍFICO --- */
+.elementor-element-0e75bf .elementor-button {
+    color: #880000 !important;
+    border-color: #880000 !important;
+}
+
+/* --- ANIMACIÓN PARA EL TÍTULO PRINCIPAL --- */
+/* Buscamos el cursor al final del texto del encabezado */
+h1.elementor-heading-title::after, 
+h2.elementor-heading-title::after {
+    content: "_";
+    display: inline-block;
+    margin-left: 8px;
+    animation: parpadeo 1s steps(2, start) infinite;
+    color: #880000; /* Puedes cambiarlo a #880000 si prefieres que el cursor sea rojo */
+}
+
+/* --- 8. EFECTO NEÓN MINIMALISTA (30% REDUCIDO) --- */
+h2.elementor-heading-title, 
+h3.elementor-heading-title {
+    color: #54C6EB !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    /* Reducción drástica de radios y opacidad para un look más sobrio */
+    text-shadow: 
+        0 0 3px rgba(255, 255, 255, 0.4), /* Núcleo apenas perceptible */
+        0 0 7px rgba(84, 198, 235, 0.6),   /* Brillo de contorno sutil */
+        0 0 15px rgba(84, 198, 235, 0.6); /* Aura muy tenue */
+    transition: all 0.4s ease-in-out;
+}
+
+/* Efecto de Enfoque al pasar el ratón (Hover más contenido) */
+.elementor-widget-container:hover h2.elementor-heading-title,
+.elementor-widget-container:hover h3.elementor-heading-title {
+    color: #FFFFFF !important;
+    text-shadow: 
+        0 0 5px #FFFFFF,
+        0 0 15px rgba(84, 198, 235, 0.7);
+    filter: brightness(1.1); /* Brillo muy ligero */
+}
+
+/* Cursor parpadeante con el mismo perfil de luz */
+h1.elementor-heading-title::after, 
+h2.elementor-heading-title::after {
+    color: #54C6EB !important;
+    text-shadow: 0 0 8px rgba(84, 198, 235, 0.5);
+}
+
+/* --- 12. EFECTO FLOTANTE ULTRA-COMPATIBLE --- */
+@keyframes flotarNodos {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Forzamos la animación a los contenedores internos de las 3 columnas */
+.elementor-section .elementor-container > .elementor-column > .elementor-widget-wrap {
+    animation: flotarNodos 5s ease-in-out infinite !important;
+    will-change: transform; /* Mejora el rendimiento */
+}
+
+/* Desfase temporal para cada columna */
+.elementor-section .elementor-container > .elementor-column:nth-child(1) > .elementor-widget-wrap { animation-delay: 0s; }
+.elementor-section .elementor-container > .elementor-column:nth-child(2) > .elementor-widget-wrap { animation-delay: 1.5s; }
+.elementor-section .elementor-container > .elementor-column:nth-child(3) > .elementor-widget-wrap { animation-delay: 3s; }
