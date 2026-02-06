@@ -1,20 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'grupo4_steven - VPC 10.4.0.0/16 + Bastion + Privada + NAT + S3 + SSM (AWS Academy)'
 
-Parameters:
-  KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Clave EC2 existente
-    ConstraintDescription: Debe ser un EC2 Key Pair existente
-
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      - Label:
-          default: "EC2 Configuration"
-        Parameters:
-          - KeyPairName
-
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -77,9 +63,6 @@ Resources:
     DependsOn: VPCGatewayAttachment
     Properties:
       Domain: vpc
-      Tags:
-        - Key: Name
-          Value: grupo4_steven-nat-eip
 
   NATGateway:
     Type: AWS::EC2::NatGateway
@@ -104,9 +87,6 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: grupo4_steven-private-rt
 
   PrivateRoute:
     Type: AWS::EC2::Route
@@ -121,44 +101,33 @@ Resources:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
 
+  # Security Groups sin Ingress (Solo salida para SSM)
   BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Bastion Security Group
+      GroupDescription: Bastion SG - SSM Only
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-          Description: SSH
+      SecurityGroupIngress: [] 
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
-          Description: All outbound
-      Tags:
-        - Key: Name
-          Value: grupo4_steven-bastion-sg
 
   PrivateSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Private Instance Security Group - SSM Only
+      GroupDescription: Private SG - SSM Only
       VpcId: !Ref VPC
+      SecurityGroupIngress: []
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
-          Description: All outbound
-      Tags:
-        - Key: Name
-          Value: grupo4_steven-private-sg
 
   BastionHost:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-0b6c6ebed2801a5cb
+      ImageId: ami-0b6c6ebed2801a5cb # Ubuntu 22.04 LTS apróx.
       InstanceType: t3.nano
-      KeyName: !Ref KeyPairName
+      # KeyName eliminado: No se necesita para SSM
       SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
         - !Ref BastionSecurityGroup
@@ -166,33 +135,21 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -e
           apt-get update
-          apt-get upgrade -y
-          apt-get install -y curl wget git vim htop net-tools unzip
-          
-          # Instalar AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          rm -rf awscliv2.zip aws/
-          
-          # Instalar SSM Agent
+          apt-get install -y unzip
+          # El agente suele venir en Ubuntu, pero esto asegura que esté activo
           snap install amazon-ssm-agent --classic
-          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
           systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-      Monitoring: true
+          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
       Tags:
         - Key: Name
           Value: grupo4_steven-bastion
-
 
   PrivateInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: ami-0b6c6ebed2801a5cb
       InstanceType: t3.nano
-      KeyName: !Ref KeyPairName
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
         - !Ref PrivateSecurityGroup
@@ -200,22 +157,11 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -e
           apt-get update
-          apt-get upgrade -y
-          apt-get install -y curl wget git vim htop mysql-client net-tools unzip
-          
-          # Instalar AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          rm -rf awscliv2.zip aws/
-          
-          # Instalar SSM Agent
+          apt-get install -y mysql-client unzip
           snap install amazon-ssm-agent --classic
-          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
           systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-      Monitoring: true
+          systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
       Tags:
         - Key: Name
           Value: grupo4_steven-privada
@@ -224,16 +170,6 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "grupo4-steven-${AWS::AccountId}-${AWS::Region}"
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        - Key: Name
-          Value: grupo4_steven-s3
 
 Outputs:
   VpcId:
@@ -292,6 +228,4 @@ Outputs:
     Description: SSM Command for Bastion
     Value: !Sub 'aws ssm start-session --target ${BastionHost} --region ${AWS::Region}'
 
-  SSHCommandBastion:
-    Description: SSH Command for Bastion
-    Value: !Sub 'ssh -i <your-key.pem> ubuntu@${BastionHost.PublicIp}'
+
