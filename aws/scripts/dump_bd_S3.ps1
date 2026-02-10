@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-
+#
 # Variables
 $DB_USER = "root" # Usuario BD
 $DB_PASSWORD = "" # Contraseña BD
