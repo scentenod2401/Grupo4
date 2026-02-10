@@ -1,0 +1,78 @@
+/* LOGO CORPORATIVO ZERO DAY SYSTEMS */
+body::before {
+    content: "";
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    width: 200px; /* Tamaño del logo */
+    height: 100px;
+    background-image: url('https://192.168.31.224/wp-content/uploads/2026/02/logoZDS.jpg') !important;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* BAJAMOS UN POCO EL FORMULARIO PARA QUE NO SE PEGUE AL LOGO */
+.tml {
+    margin-top: 130px !important;
+}
+
+/* 1. LIMPIEZA TOTAL Y FONDO NEGRO */
+html, body, .elementor-canvas, .tml-lostpassword {
+    background-color: #000000 !important;
+}
+
+/* 2. ESTRUCTURA DE TERMINAL GRANDE Y CENTRADA */
+.tml {
+    max-width: 550px !important;
+    margin: 80px auto !important;
+    padding: 50px !important;
+    border: 1px solid #222222 !important; /* Marco sutil */
+    background-color: #000000 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+}
+
+/* 3. TÍTULOS Y TEXTOS (SOLO GRIS Y ROJO) */
+.tml-title, h1, .tml-label, label {
+    color: #888888 !important; /* Gris ceniza */
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+}
+
+.tml-message, p {
+    color: #666666 !important; /* Texto de instrucciones discreto */
+    font-size: 13px !important;
+    border-left: 2px solid #880000 !important;
+    padding-left: 15px !important;
+}
+
+/* 4. CAMPOS DE ENTRADA ESTILO IBM */
+.tml input[type="text"], 
+.tml input[type="password"], 
+.tml input[type="email"] {
+    width: 100% !important;
+    padding: 15px !important;
+    background-color: #000000 !important;
+    border: 1px solid #444444 !important;
+    color: #FFFFFF !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    margin-bottom: 20px !important;
+}
+
+/* 5. EL BOTÓN CON BRILLO (GLOW) */
+.tml-button, input[type="submit"] {
+    width: 100% !important;
+    padding: 20px !important;
+    background-color: #880000 !important; /* Rojo Delos */
+    color: #000000 !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all 0.4s ease !important;
+}
+
+/* EL PUNTAZO: EFECTO GLOW AL PASAR EL RATÓN */
+.tml-button:hover, input[type="submit"]:hover {
+    background-color: #FF0000 !important; /* Rojo brillante */
